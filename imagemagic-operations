@@ -1,0 +1,229 @@
+#! /bin/sh
+#http://www.imagemagick.org/Usage/layers/#append_array
+#  convert -size 100x100 xc:skyblue composite.gif
+#  composite -geometry  +2+0 b.png composite.gif composite.gif
+#  composite -geometry +35+30 c.png composite.gif composite.gif
+#  composite -geometry +2+0 d.png composite.gif composite.gif
+#  composite -geometry +10+55 e.png composite.gif composite.gif
+
+#Definicion de variables
+screen_x=1600
+screen_y=900
+#screen_x=800
+#screen_y=450
+tam_x=155
+tam_y=186
+inc_x=0
+inc_y=0
+foto_collage="$path/d.png"
+num_col=1
+num_fil=1
+ancho_new=0
+alto_new=0
+conta_fil=1
+conta_col=1
+
+#rutas
+base_directory="$HOME/Departamentos/Dp_INFORMATICA"
+scripts_path="$base_directory/jornadas/scripts/"
+images_path_prof="$base_directory/jornadas/collage/"
+work_path="/tmp/jornadas/"
+foto_collage="$work_path/gran_collage.jpg"
+foto_collage_temp="$work_path/gran_collage_temp.jpg"
+#foto_backup="$images_path/d.png"
+
+mkdir -p $work_path
+
+calc_grid(){
+#tamaño de una foto
+	ancho_foto=25
+	alto_foto=32
+	num_col=1
+	num_fil=1
+	num_fotos=$1
+
+	n=1
+	while [ $n -le $num_fotos ] ;
+	do
+		if  [ $n -gt $(( $num_col*$num_fil )) ] ; then
+			if [ $(( $screen_y*($num_col+1)*$ancho_foto)) -gt $(( $screen_x*($num_fil+1)*$alto_foto)) ] ; then
+				num_fil=$(( $num_fil + 1 ))
+				alto_new=$(( $screen_y / $num_fil ))
+				ancho_new=$(( $alto_new * $ancho_foto / $alto_foto ))
+			else
+				num_col=$(( $num_col + 1 ))
+				ancho_new=$(( $screen_x / $num_col ))
+				alto_new=$(( $ancho_new * $alto_foto / $ancho_foto ))
+			fi
+		fi
+		n=$(($n + 1 ))	
+	done
+}
+
+
+rarg(){
+	numargs=$(echo "$1" |wc -w)
+	rn=$(shuf -i 1-$numargs -n 1)
+	echo "$1" |cut -d " " -f $rn
+}
+
+
+#return a random number between 2 given arguments
+rnum(){
+	shuf -i $1-$2 -n 1
+}
+
+
+#do changeit function which applies one effect depending on the argument
+change_it() {
+
+	effect=$1
+	command_line_effect=""
+	case "$effect" in
+		#"glass")
+		1)
+			k=$(rarg "simple broken")
+			t=$(rarg "bipolar single double")
+			a=$(rnum 1 3)
+			n=$(rnum 100 200)
+			command_line_effect="./glasseffects -e displace -k $k -t $t -m displace -a $a -d 3 -g 3 -w 1 -s 1 -n $n"
+		;;		
+		#"lichtenstein") 
+		2)
+			command_line_effect="./lichtenstein -d o8x8"
+		;;
+		#"tunnelize") 
+		#3)
+		#	command_line_effect="./tunnelize -m $(rnum 1 2)"
+		#;;		
+		#"polaroid")  
+		0)
+			color_list="AliceBlue magenta DeepPink pink1 firebrick1 purple2 SlateBlue1 SlateGray2 CadetBlue1 DarkTurquoise SpringGreen"
+			color_list="$color_list DarkSeaGreen2 lime orange AntiqueWhite4 DarkOrange3 coral1 chocolate1 PeachPuff1"
+			command_line_effect="convert $d -thumbnail ${ancho_new}x${alto_new} -bordercolor $(rarg "$color_list") -background SteelBlue4 -polaroid 5" 
+		;;
+		#"metalic") 
+		5)
+			command_line_effect="convert -emboss 0x1.2"
+		;;
+		#"oil") 
+		6)
+			command_line_effect="convert -paint 3"
+		;;
+		#"disperse")
+		7)
+			s=$(rnum 1 5)
+			d=$(rnum 1 20)
+			c=$(rnum 0 15)
+			command_line_effect="./disperse -s $s -d $d -c $c"
+		;;
+		*)
+			command_line_effect="convert -paint 3"
+		;;
+	esac
+	echo "$command_line_effect"
+	#return-echo la cadena de texto
+}
+
+
+#do a composition with all pictures
+add_foto() {
+#falta poner limites: se añaden fotos ilimitadamente
+	foto=$1
+	inc_x=$(( ($conta_col-1)*$ancho_new ))
+	inc_y=$(( ($conta_fil-1)*$alto_new))
+
+	#foto_nueva="$foto -geometry +$inc_x+$inc_y -composite"
+	rc=0
+	composite -geometry +$inc_x+$inc_y $foto $foto_collage $foto_collage_temp || rc=$?	
+	mv $foto_collage_temp $foto_collage
+	if [ $conta_col -eq $num_col ] ; then
+		conta_fil=$(( $conta_fil+1 ))
+		conta_col=1
+	else
+		conta_col=$(( $conta_col + 1 ))
+	fi
+	return $rc
+}
+
+fotos_ls(){
+	ls -1 $images_path_prof |sed -n "/^[[:digit:]]\{3\}-/p" |sed -n "/\.jpg$/p"
+	#ls -1 *.jpg | sed -n "/^[[:digit:]]\{3\}-/p"
+}
+
+#main
+base_collage="convert -size ${screen_x}x${screen_y} xc:skyblue"
+num_fotos=$(fotos_ls | wc -l)
+calc_grid $num_fotos 
+cont=0
+while [ $cont -le 10 ] ;
+do
+	#global collage
+	#rm -f $foto_collage
+	conta_fil=1
+	conta_col=1
+
+ 	[ -r $foto_collage ] || $base_collage $foto_collage
+	for fotob in $(fotos_ls); do
+	#ls -1 *.jpg | sed -n "/^[[:digit:]]\{3\}-/p" | while read foto ; do
+		foto="${images_path_prof}/$fotob"
+		# choose a random effect
+		num_effects=$(rnum 1 7)
+
+		#individual effects
+		foto_new="${work_path}/new-$fotob"
+		
+		convert $foto -resize ${ancho_new}x${alto_new} $foto_new		
+		cmd_ind_effect="$(change_it $num_effects)"
+		rc=0
+		foto_effect1="${work_path}/md1-$fotob"
+
+		rm -f $foto_effect1
+		$cmd_ind_effect $foto_new $foto_effect1 || rc=$?
+
+
+		if [ $rc -gt 0 ] ; then 
+			#settings if error
+			echo "Something is wrong when individual effect is applied"
+			foto_effect1="$(basename $foto_backup)"
+		fi
+		#individual rotation effect
+		foto_effect2="${work_path}/md2-$fotob"
+		rm -f $foto_effect2
+		#giro=$(rnum 0 20)
+		giro=$(rarg "-20 -10 -0 10 20")
+		if ! convert $foto_effect1 -rotate $giro $foto_effect2  ; then 
+			#settings if error			
+			echo "Problems during rotation"
+			$foto_effect2=$foto_effect1 
+		fi
+		cmd_ind_effect="$(change_it 0)"
+		foto_effect3="${work_path}/md3-$fotob"
+		$cmd_ind_effect $foto_effect2 $foto_effect3
+
+
+		if ! add_foto $foto_effect3  ; then
+                       echo "Something is wrong when collage effect is applied"
+		else
+			cont=$(( $cont + 1 ))
+		fi
+	done
+	sleep 2
+done
+
+#  ejemplo :
+#       convert -size ${screen_x}x${screen_y} xc:skyblue \
+#  	trans1-$e -geometry +$inc_x+$inc_y -composite \
+#	$final_image
+
+
+
+# con lineas de cuadricula
+#./glasseffects -e none -k simple -t single -m overlay -o darkgoldenrod -w 2 -r 5 $final_image glass-$final_image
+
+#borramos las fotos individuales??
+#i=0
+#for i in $(ls trans*);	do 
+#	rm $i
+#done
+
