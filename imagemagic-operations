@@ -147,7 +147,7 @@ add_foto() {
 }
 
 fotos_ls(){
-	ls -1 $images_path_prof |sed -n "/^[[:digit:]]\{3\}-/p" |sed -n "/\.jpg$/p"
+	ls -1 $images_path_prof |sed -n "/^[[:digit:]]\{3\}-/p" |sed -n "/\.jpg$/p" |sort -R
 	#ls -1 *.jpg | sed -n "/^[[:digit:]]\{3\}-/p"
 }
 
@@ -191,7 +191,11 @@ do
 		foto_effect2="${work_path}/md2-$fotob"
 		rm -f $foto_effect2
 		#giro=$(rnum 0 20)
-		giro=$(rarg "-20 -10 -0 10 20")
+		#giro=$(rarg "-20 -10 -0 10 20")
+		# generamos aleatorio entre 0 y 40 y restamos 20
+		# para conseguir entre -20 y +20
+		giro=$(rnum 0 40)
+		giro=$(($giro - 20))
 		if ! convert $foto_effect1 -rotate $giro $foto_effect2  ; then 
 			#settings if error			
 			echo "Problems during rotation"
