@@ -26,7 +26,8 @@ conta_col=1
 #rutas
 base_directory="$HOME/Departamentos/Dp_INFORMATICA"
 scripts_path="$base_directory/jornadas/scripts/"
-images_path_prof="$base_directory/jornadas/collage/"
+#images_path_prof="$base_directory/jornadas/collage/"
+images_path_prof="$HOME/webcam-burst-ds"
 work_path="/tmp/jornadas/"
 foto_collage="$work_path/gran_collage.jpg"
 foto_collage_temp="$work_path/gran_collage_temp.jpg"
